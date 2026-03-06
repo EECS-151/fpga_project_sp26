@@ -4,6 +4,7 @@ build
 csrc
 ucli.key
 *.vpd
+*.fsdb
 *.tb
 *.tb.daidir
 *.wav
