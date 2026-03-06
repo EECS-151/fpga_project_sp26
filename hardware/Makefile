@@ -37,9 +37,9 @@ sim/%.fst: sim/%.tbi
 	cd sim && $(VVP) $*.tbi -fst |& tee $*.log
 
 # ISA Tests
-sim/isa/isa_tb.tbi: sim/isa_tb.v $(RTL) $(SIM_MODELS)
+sim/isa/isa_tb.tbi: sim/isa_tb.sv $(RTL) $(SIM_MODELS)
 	mkdir -p sim/isa
-	cd sim/isa && $(IVERILOG) $(IVERILOG_OPTS) -o isa_tb.tbi ../isa_tb.v $(RTL) $(SIM_MODELS)
+	cd sim/isa && $(IVERILOG) $(IVERILOG_OPTS) -o isa_tb.tbi ../isa_tb.sv $(RTL) $(SIM_MODELS)
 
 sim/isa/%.fst: sim/isa/isa_tb.tbi $(ABS_TOP)/../software/riscv-isa-tests/%.hex
 	cd sim/isa && $(VVP) isa_tb.tbi -fst +hex_file=$(word 2,$^) +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log
@@ -55,9 +55,9 @@ isa-tests: $(ISA_TESTS_FST)
 ### UNUSED TESTS IN RUN_ALL_SIMS
 
 # ISA Tests - FPCPU
-sim/isa/fpisa_tb.tbi: sim/fpisa_tb.v $(RTL) $(SIM_MODELS)
+sim/isa/fpisa_tb.tbi: sim/fpisa_tb.sv $(RTL) $(SIM_MODELS)
 	mkdir -p sim/isa
-	cd sim/isa && $(IVERILOG) $(IVERILOG_OPTS) -o fpisa_tb.tbi ../fpisa_tb.v $(RTL) $(SIM_MODELS)
+	cd sim/isa && $(IVERILOG) $(IVERILOG_OPTS) -o fpisa_tb.tbi ../fpisa_tb.sv $(RTL) $(SIM_MODELS)
 
 sim/isa/%.fst: sim/isa/fpisa_tb.tbi $(ABS_TOP)/../software/riscv-isa-tests/%.hex
 	cd sim/isa && $(VVP) fpisa_tb.tbi -fst +hex_file=$(word 2,$^) +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log
