@@ -5,6 +5,7 @@ module cpu #(
 ) (
     input logic clk,
     input logic rst,
+    input logic system_clk,
     input logic bp_enable,
     input logic serial_in,
     output logic serial_out
@@ -90,6 +91,7 @@ module cpu #(
     ) on_chip_uart (
         .clk(clk),
         .reset(rst),
+        .system_clk(system_clk),
 
         .serial_in(serial_in),
         .data_out(uart_rx_data_out),
@@ -101,8 +103,6 @@ module cpu #(
         .data_in_valid(uart_tx_data_in_valid),
         .data_in_ready(uart_tx_data_in_ready)
     );
-
-    logic [31:0] tohost_csr = 0;
 
     // TODO: Your code to implement a fully functioning RISC-V core
     // Add as many modules as you want

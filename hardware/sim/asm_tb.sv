@@ -16,7 +16,7 @@ module asm_tb();
   ) cpu (
     .clk(clk),
     .rst(rst),
-    .bp_enable(bp_enable),
+    .system_clk(clk),
     .serial_in(1'b1),
     .serial_out()
   );

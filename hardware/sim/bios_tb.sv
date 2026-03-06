@@ -26,7 +26,7 @@ module bios_tb();
   ) cpu (
     .clk(clk),
     .rst(rst),
-    .bp_enable(bp_enable),
+    .system_clk(clk),
     .serial_in(serial_in),   // input
     .serial_out(serial_out)  // output
   );
