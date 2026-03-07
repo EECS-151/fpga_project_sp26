@@ -26,11 +26,16 @@ module z1top #(
 );
 
     logic CLK_100MHZ;
+    `ifdef SYNTHESIS
     IBUFDS ibufds_clk (
         .I(CLK_100_P),
         .IB(CLK_100_N),
         .O(CLK_100MHZ)
     );
+    `endif
+    `ifndef SYNTHESIS
+    assign CLK_100MHZ = CLK_100_P;
+    `endif
 
     // Clocks and PLL lock status
     logic cpu_clk, cpu_clk_locked;

@@ -14,7 +14,7 @@ module imem (
 
   logic [31:0] mem [16384-1:0];
   integer i;
-  always_ff @(posedge clk) begin
+  always @(posedge clk) begin
     if (ena) begin
       for(i=0; i<4; i=i+1) begin
         if (wea[i]) begin
