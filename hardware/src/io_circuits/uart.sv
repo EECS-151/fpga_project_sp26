@@ -1,3 +1,5 @@
+`ifdef SYNTHESIS
+
 module uart #(
     parameter int CLOCK_FREQ = 125_000_000,
     parameter int SYSTEM_CLOCK_FREQ = 100_000_000,
@@ -25,10 +27,10 @@ module uart #(
     always_ff @ (posedge system_clk) begin
         if (reset) begin
             serial_out_reg <= 1'b1;
-            serial_in_reg <= 1'b1;
+            serial_in_reg  <= 1'b1;
         end else begin
             serial_out_reg <= serial_out_tx;
-            serial_in_reg <= serial_in;
+            serial_in_reg  <= serial_in;
         end
     end
 
@@ -102,4 +104,63 @@ module uart #(
         .empty(rx_fifo_empty)
     );
     assign data_out_valid = !rx_fifo_empty && !rx_rd_rst_busy;
+
 endmodule
+
+`else // SIMULATION
+
+module uart #(
+    parameter CLOCK_FREQ = 100_000_000,
+    parameter BAUD_RATE  = 115_200
+) (
+    input  logic        clk,
+    input  logic        system_clk,
+    input  logic        reset,
+
+    input  logic  [7:0] data_in,
+    input  logic        data_in_valid,
+    output logic        data_in_ready,
+
+    output logic  [7:0] data_out,
+    output logic        data_out_valid,
+    input  logic        data_out_ready,
+
+    input  logic        serial_in,
+    output logic        serial_out
+);
+    logic serial_in_reg, serial_out_reg;
+    logic serial_out_tx;
+    assign serial_out = serial_out_reg;
+
+    always_ff @ (posedge clk) begin
+        serial_out_reg <= reset ? 1'b1 : serial_out_tx;
+        serial_in_reg  <= reset ? 1'b1 : serial_in;
+    end
+
+    uart_transmitter #(
+        .CLOCK_FREQ(CLOCK_FREQ),
+        .BAUD_RATE(BAUD_RATE)
+    ) uatransmit (
+        .clk(clk),
+        .reset(reset),
+        .data_in(data_in),
+        .data_in_valid(data_in_valid),
+        .data_in_ready(data_in_ready),
+        .serial_out(serial_out_tx)
+    );
+
+    uart_receiver #(
+        .CLOCK_FREQ(CLOCK_FREQ),
+        .BAUD_RATE(BAUD_RATE)
+    ) uareceive (
+        .clk(clk),
+        .reset(reset),
+        .data_out(data_out),
+        .data_out_valid(data_out_valid),
+        .data_out_ready(data_out_ready),
+        .serial_in(serial_in_reg)
+    );
+
+endmodule
+
+`endif
