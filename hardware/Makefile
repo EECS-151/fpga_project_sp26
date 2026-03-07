@@ -8,7 +8,7 @@ RTL                     += $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/src 
 CONSTRAINTS             += $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/src -type f -name "*.xdc"))
 TOP                     ?= z1top
 VCS                     := vcs -full64
-VCS_OPTS                := -notice -line +lint=all,noVCDE,noNS,noSVA-UA -sverilog -timescale=1ns/10ps -debug +define+ABS_TOP=$(ABS_TOP) +incdir+$(ABS_TOP)/src/riscv_core
+VCS_OPTS                := -notice -line +lint=all,noVCDE,noNS,noSVA-UA -sverilog -kdb -timescale=1ns/10ps -debug +define+ABS_TOP=$(ABS_TOP) +incdir+$(ABS_TOP)/src/riscv_core
 SIM_RTL                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim -type f -name "*.sv"))
 SIM_MODELS              := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim_models -type f -name "*.sv"))
 XPM_MODELS              := /share/instsww/xilinx/2025.2/data/ip/xpm/xpm_cdc/hdl/xpm_cdc.sv \
@@ -17,6 +17,8 @@ XPM_MODELS              := /share/instsww/xilinx/2025.2/data/ip/xpm/xpm_cdc/hdl/
 IVERILOG                := iverilog
 IVERILOG_OPTS           := -Ttyp -D IVERILOG=1 -g2012 -gassertions -Wall -Wno-timescale -D ABS_TOP=$(ABS_TOP) -I $(ABS_TOP)/src/riscv_core -I $(ABS_TOP)/sim
 VVP                     := vvp
+VPD2FSDB                ?= /share/instsww/synopsys-new/verdi/T-2022.06-SP2/bin/vpd2fsdb
+VERDI                   ?= /share/instsww/synopsys-new/verdi/T-2022.06-SP2/bin/verdi
 ISA_TESTS               := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/../software/riscv-isa-tests -type f -name "*.hex"))
 ISA_TESTS_FILES         := $(notdir $(ISA_TESTS))
 ISA_TESTS_FST           := $(addprefix sim/isa/,$(subst .hex,.fst,$(ISA_TESTS_FILES)))
@@ -29,6 +31,9 @@ sim/%.tb: sim/%.sv $(RTL) $(SIM_MODELS)
 
 sim/%.vpd: sim/%.tb
 	cd sim && ./$*.tb +verbose=1 +vpdfile+$*.vpd |& tee $*.log
+
+sim/%.fsdb: sim/%.vpd
+	cd sim && $(VPD2FSDB) $*.vpd -o $*.fsdb
 
 sim/%.tbi: sim/%.sv $(RTL)
 	cd sim && $(IVERILOG) $(IVERILOG_OPTS) -o $*.tbi $*.sv $(RTL) $(SIM_MODELS) 
