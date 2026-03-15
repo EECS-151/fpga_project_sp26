@@ -1,0 +1,7 @@
+config BOARD_EECS151_CORE
+    bool "EECS151 RISC-V Softcore"
+    # Change this to match the 'soc' field in your board.yaml
+    depends on SOC_SERIES_RISCV_VIRT
+    select RISCV
+    select RISCV_ISA_EXT_M
+    select ATOMIC_OPERATIONS_C

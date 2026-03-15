@@ -1,0 +1,71 @@
+/dts-v1/;
+
+/ {
+    model = "eecs151_core";
+    compatible = "berkeley,eecs151_core";
+
+    #address-cells = <1>;
+    #size-cells = <1>;
+
+    chosen {
+        zephyr,console = &uart0;
+        zephyr,shell-uart = &uart0;
+        zephyr,sram = &dmem;
+        zephyr,flash = &dmem; 
+    };
+
+    cpus {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        cpu@0 {
+            device_type = "cpu";
+            compatible = "riscv,cpu";
+            riscv,isa = "rv32im";
+            reg = <0>;
+            status = "okay";
+
+            /* Direct CPU Interrupt Controller */
+            intc: interrupt-controller {
+                compatible = "riscv,cpu-intc";
+                interrupt-controller;
+                #interrupt-cells = <1>;
+                #address-cells = <0>;
+            };
+        };
+    };
+
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "simple-bus";
+        ranges;
+
+        /* Core Local Interruptor (Timer/IPI) */
+        clint@2000000 {
+            compatible = "riscv,clint0";
+            reg = <0x02000000 0x10000>;
+            interrupts-extended = <&intc 3>, <&intc 7>;
+            
+            /* Add these two lines to satisfy the YAML binding */
+            interrupt-controller;
+            #interrupt-cells = <1>;
+
+            status = "okay";
+        };
+
+        dmem: memory@10000000 {
+            compatible = "mmio-sram";
+            reg = <0x10000000 0x20000>; /* 128KB */
+        };
+
+        /* Standard UART - no interrupt-parent linked here */
+        uart0: uart@80000000 {
+            compatible = "ns16550";
+            reg = <0x80000000 0x100>;
+            label = "UART_0";
+            clock-frequency = <10000000>;
+            /* Interrupts are disabled for this UART to avoid PLIC dependency */
+            status = "okay";
+        };
+    };
+};

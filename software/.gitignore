@@ -3,3 +3,7 @@
 *.log
 *.hex
 *.elf
+
+## RTOS
+rtos/venv
+rtos/build
