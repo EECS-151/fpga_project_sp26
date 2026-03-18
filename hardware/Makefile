@@ -27,7 +27,7 @@ C_TESTS_FILES           := $(notdir $(C_TESTS))
 C_TESTS_FST             := $(addprefix sim/c_tests/,$(subst .c,.fst,$(C_TESTS_FILES)))
 
 sim/%.tb: sim/%.sv $(RTL) $(SIM_MODELS)
-	cd sim && $(VCS) $(VCS_OPTS) -o $*.tb $(RTL) $(SIM_MODELS) $(XPM_MODELS) $*.sv -top $* -top glbl
+	cd sim && $(VCS) $(VCS_OPTS) -o $*.tb $(XIL_SIM_ARGS) $(RTL) $(SIM_MODELS) $(XPM_MODELS) $*.sv -top $* -top glbl
 
 sim/%.vpd: sim/%.tb
 	cd sim && ./$*.tb +verbose=1 +vpdfile+$*.vpd |& tee $*.log
@@ -36,12 +36,12 @@ sim/%.fsdb: sim/%.vpd
 	cd sim && $(VPD2FSDB) $*.vpd -o $*.fsdb
 
 sim/%.tbi: sim/%.sv $(RTL)
-	cd sim && $(IVERILOG) $(IVERILOG_OPTS) -o $*.tbi $*.sv $(RTL) $(SIM_MODELS) 
+	cd sim && $(IVERILOG) $(IVERILOG_OPTS) -o $*.tbi $*.sv $(RTL) $(IVERILOG_SIM_MODELS) $(SIM_MODELS) 
 
 sim/%.fst: sim/%.tbi
 	cd sim && $(VVP) $*.tbi -fst |& tee $*.log
 
-# ISA Tests
+# ISA Tests (iverilog)
 sim/isa/isa_tb.tbi: sim/isa_tb.sv $(RTL) $(SIM_MODELS)
 	mkdir -p sim/isa
 	cd sim/isa && $(IVERILOG) $(IVERILOG_OPTS) -o isa_tb.tbi ../isa_tb.sv $(RTL) $(SIM_MODELS)
@@ -50,6 +50,52 @@ sim/isa/%.fst: sim/isa/isa_tb.tbi $(ABS_TOP)/../software/riscv-isa-tests/%.hex
 	cd sim/isa && $(VVP) isa_tb.tbi -fst +hex_file=$(word 2,$^) +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log
 
 isa-tests: $(ISA_TESTS_FST)
+
+# ISA Tests (VCS)
+sim/isa/isa_tb.tb: sim/isa_tb.sv $(RTL) $(SIM_MODELS)
+	@mkdir -p sim/isa
+	@cd sim/isa && $(VCS) $(VCS_OPTS) +incdir+$(ABS_TOP)/sim -o isa_tb.tb $(XIL_SIM_ARGS) $(RTL) $(SIM_MODELS) $(XPM_MODELS) ../isa_tb.sv -top isa_tb -top glbl > isa_tb_compile.log 2>&1
+
+sim/isa/%.vpd: sim/isa/isa_tb.tb $(ABS_TOP)/../software/riscv-isa-tests/%.hex
+	@cd sim/isa && ./isa_tb.tb +verbose=1 +hex_file=$(word 2,$^) +test_name=$(basename $(notdir $(word 2,$^))) +vpdfile+$(ABS_TOP)/sim/isa/$*.vpd > $(basename $(notdir $(word 2,$^))).log 2>&1
+
+sim/isa/%.fsdb: sim/isa/%.vpd
+	@cd sim/isa && $(VPD2FSDB) $*.vpd -o $*.fsdb > /dev/null 2>&1
+
+isa-tests-vcs: $(ISA_TESTS_FSDB)
+	@echo ""
+	@echo "============================================================"
+	@echo " VCS ISA Test Results"
+	@echo "============================================================"
+	@printf "%-30s %8s  %s\n" "TEST" "CYCLES" "RESULT"
+	@printf "%-30s %8s  %s\n" "----" "------" "------"
+	@total=0; passed=0; failed=0; timeout=0; \
+	for vpd in $(ISA_TESTS_VPD); do \
+		test=$$(basename $$vpd .vpd); \
+		log=sim/isa/$$test.log; \
+		total=$$((total + 1)); \
+		if [ ! -f $$log ]; then \
+			printf "%-30s %8s  %s\n" "$$test" "-" "NO LOG"; \
+		elif grep -q "\[passed\]" $$log; then \
+			cycles=$$(grep "\[passed\]" $$log | grep -oP 'in\s+\K[0-9]+'); \
+			printf "%-30s %8s  %s\n" "$$test" "$$cycles" "PASSED"; \
+			passed=$$((passed + 1)); \
+		elif grep -q "\[failed\]" $$log; then \
+			printf "%-30s %8s  %s\n" "$$test" "-" "FAILED"; \
+			failed=$$((failed + 1)); \
+		elif grep -qiE "TIMEOUT|simulation time limit" $$log; then \
+			printf "%-30s %8s  %s\n" "$$test" "-" "TIMEOUT"; \
+			timeout=$$((timeout + 1)); \
+		else \
+			printf "%-30s %8s  %s\n" "$$test" "-" "UNKNOWN"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo "============================================================"; \
+	printf "Total: $$total  |  Passed: $$passed  |  Failed: $$failed  |  Timeout: $$timeout\n"; \
+	echo "============================================================"
+
+isa-tests-vcs-fsdb: $(ISA_TESTS_FSDB)
 
 ### UNUSED TESTS IN RUN_ALL_SIMS
 
@@ -184,5 +230,5 @@ clean-sim:
 clean-build:
 	rm -rf ./build
 
-.PHONY: setup synth impl program program-force vivado all clean-build clean-sim %.tb
-.PRECIOUS: sim/%.tb sim/%.tbi sim/%.fst sim/%.vpd
+.PHONY: setup synth impl program program-force vivado all clean-build clean-sim isa-tests isa-tests-vcs isa-tests-vcs-fsdb %.tb
+.PRECIOUS: sim/%.tb sim/%.tbi sim/%.fst sim/%.vpd sim/isa/isa_tb.tb sim/isa/%.vpd sim/isa/%.fsdb
