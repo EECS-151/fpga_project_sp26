@@ -25,6 +25,7 @@ ISA_TESTS_FST           := $(addprefix sim/isa/,$(subst .hex,.fst,$(ISA_TESTS_FI
 C_TESTS                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/../software/c_tests -type f -name "*.c"))
 C_TESTS_FILES           := $(notdir $(C_TESTS))
 C_TESTS_FST             := $(addprefix sim/c_tests/,$(subst .c,.fst,$(C_TESTS_FILES)))
+VERDI                   ?= /share/instsww/synopsys-new/verdi/T-2022.06-SP2/bin/verdi
 
 sim/%.tb: sim/%.sv $(RTL) $(SIM_MODELS)
 	cd sim && $(VCS) $(VCS_OPTS) -o $*.tb $(XIL_SIM_ARGS) $(RTL) $(SIM_MODELS) $(XPM_MODELS) $*.sv -top $* -top glbl
@@ -40,6 +41,10 @@ sim/%.tbi: sim/%.sv $(RTL)
 
 sim/%.fst: sim/%.tbi
 	cd sim && $(VVP) $*.tbi -fst |& tee $*.log
+
+# Open Verdi with FSDB and VCS dbdir. Usage: make verdi [TB=led_controller_tb]
+verdi: sim/$(TB).fsdb
+	$(VERDI) -dbdir sim/$(TB).tb.daidir -ssf sim/$(TB).fsdb &
 
 # ISA Tests (iverilog)
 sim/isa/isa_tb.tbi: sim/isa_tb.sv $(RTL) $(SIM_MODELS)
