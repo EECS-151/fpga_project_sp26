@@ -1,4 +1,5 @@
 `timescale 1ns/1ns
+`default_nettype none
 
 `include "../src/riscv_core/opcode.vh"
 `include "mem_path.vh"
@@ -27,20 +28,21 @@
 // You should add your own tests if there are cases you think the testbench
 // does not cover.
 
-module cpu_tb();
-  reg clk, rst;
-  parameter CPU_CLOCK_PERIOD = 20;
-  parameter CPU_CLOCK_FREQ   = 1_000_000_000 / CPU_CLOCK_PERIOD;
+module cpu_tb;
+  parameter int unsigned CPU_CLOCK_PERIOD = 20;
+  parameter int unsigned CPU_CLOCK_FREQ   = 1_000_000_000 / CPU_CLOCK_PERIOD;
+
+  logic clk;
+  logic rst;
+  logic bp_enable = 1'b0;
 
   initial clk = 0;
-  always #(CPU_CLOCK_PERIOD/2) clk = ~clk;
-  wire [31:0] csr;
-  reg bp_enable = 1'b0;
+  always #(CPU_CLOCK_PERIOD / 2) clk = ~clk;
 
   // Init PC with 32'h1000_0000 -- address space of IMem
   // When PC is in IMem's address space, IMem is read-only
   // DMem can be R/W as long as the addr bits [31:28] is 4'b00x1
-  cpu # (
+  cpu #(
     .CPU_CLOCK_FREQ(CPU_CLOCK_FREQ),
     .RESET_PC(32'h1000_0000)
   ) cpu (
@@ -51,138 +53,128 @@ module cpu_tb();
     .serial_out()
   );
 
-  wire [31:0] timeout_cycle = 10;
+  localparam int unsigned TimeoutCycle = 10;
 
   // Reset IMem, DMem, and RegFile before running new test
-  task reset;
-    integer i;
-    begin
-      for (i = 0; i < `RF_PATH.DEPTH; i = i + 1) begin
-        `RF_PATH.mem[i] = 0;
-      end
-      for (i = 0; i < `DMEM_PATH.DEPTH; i = i + 1) begin
-        `DMEM_PATH.mem[i] = 0;
-      end
-      for (i = 0; i < `IMEM_PATH.DEPTH; i = i + 1) begin
-        `IMEM_PATH.mem[i] = 0;
-      end
+  task automatic reset();
+    for (int i = 0; i < `RF_PATH.DEPTH; i++) begin
+      `RF_PATH.mem[i] = '0;
+    end
+    for (int i = 0; i < `DMEM_PATH.DEPTH; i++) begin
+      `DMEM_PATH.mem[i] = '0;
+    end
+    for (int i = 0; i < `IMEM_PATH.DEPTH; i++) begin
+      `IMEM_PATH.mem[i] = '0;
     end
   endtask
 
-  task reset_cpu;
+  task automatic reset_cpu();
     @(negedge clk);
-    rst = 1;
+    rst = 1'b1;
     @(negedge clk);
-    rst = 0;
+    rst = 1'b0;
   endtask
 
-  task init_rf;
-    integer i;
-    begin
-      for (i = 1; i < `RF_PATH.DEPTH; i = i + 1) begin
-        `RF_PATH.mem[i] = 100 * i + 1;
-      end
+  task automatic init_rf();
+    for (int i = 1; i < `RF_PATH.DEPTH; i++) begin
+      `RF_PATH.mem[i] = 32'(100 * i + 1);
     end
   endtask
 
-  reg [31:0] cycle;
-  reg done;
-  reg [31:0]  current_test_id = 0;
-  reg [255:0] current_test_type;
-  reg [31:0]  current_output;
-  reg [31:0]  current_result;
-  reg all_tests_passed = 0;
+  logic [31:0] cycle = '0;
+  logic        done;
+  logic [31:0] current_test_id = '0;
+  string       current_test_type;
+  logic [31:0] current_output;
+  logic [31:0] current_result;
+  bit          all_tests_passed = 1'b0;
 
 
   // Check for timeout
   // If a test does not return correct value in a given timeout cycle,
   // we terminate the testbench
   initial begin
-    while (all_tests_passed === 0) begin
+    while (!all_tests_passed) begin
       @(posedge clk);
-      if (cycle === timeout_cycle) begin
-        $display("[Failed] Timeout at [%d] test %s, expected_result = %h, got = %h",
-                current_test_id, current_test_type, current_result, current_output);
+      if (cycle == TimeoutCycle) begin
+        $display("[Failed] Timeout at [%0d] test %s, expected_result = %h, got = %h",
+                 current_test_id, current_test_type, current_result, current_output);
         $finish();
       end
     end
   end
 
-  always @(posedge clk) begin
-    if (done === 0)
-      cycle <= cycle + 1;
+  always_ff @(posedge clk) begin
+    if (!done)
+      cycle <= cycle + 32'd1;
     else
-      cycle <= 0;
+      cycle <= '0;
   end
 
   // Check result of RegFile
   // If the write_back (destination) register has correct value (matches "result"), test passed
   // This is used to test instructions that update RegFile
-  task check_result_rf;
-    input [31:0]  rf_wa;
-    input [31:0]  result;
-    input [255:0] test_type;
-    begin
-      done = 0;
-      current_test_id   = current_test_id + 1;
-      current_test_type = test_type;
-      current_result    = result;
-      while (`RF_PATH.mem[rf_wa] !== result) begin
-        current_output = `RF_PATH.mem[rf_wa];
-        @(posedge clk);
-      end
-      cycle = 0;
-      done = 1;
-      $display("[%d] Test %s passed!", current_test_id, test_type);
+  task automatic check_result_rf(
+    input logic [31:0] rf_wa,
+    input logic [31:0] result,
+    input string       test_type
+  );
+    done = 1'b0;
+    current_test_id++;
+    current_test_type = test_type;
+    current_result    = result;
+    while (`RF_PATH.mem[rf_wa] !== result) begin
+      current_output = `RF_PATH.mem[rf_wa];
+      @(posedge clk);
     end
+    cycle = '0;
+    done = 1'b1;
+    $display("[%0d] Test %s passed!", current_test_id, test_type);
   endtask
 
   // Check result of DMem
   // If the memory location of DMem has correct value (matches "result"), test passed
   // This is used to test store instructions
-  task check_result_dmem;
-    input [31:0]  addr;
-    input [31:0]  result;
-    input [255:0] test_type;
-    begin
-      done = 0;
-      current_test_id   = current_test_id + 1;
-      current_test_type = test_type;
-      current_result    = result;
-      while (`DMEM_PATH.mem[addr] !== result) begin
-        current_output = `DMEM_PATH.mem[addr];
-        @(posedge clk);
-      end
-      cycle = 0;
-      done = 1;
-      $display("[%d] Test %s passed!", current_test_id, test_type);
+  task automatic check_result_dmem(
+    input logic [31:0] addr,
+    input logic [31:0] result,
+    input string       test_type
+  );
+    done = 1'b0;
+    current_test_id++;
+    current_test_type = test_type;
+    current_result    = result;
+    while (`DMEM_PATH.mem[addr] !== result) begin
+      current_output = `DMEM_PATH.mem[addr];
+      @(posedge clk);
     end
+    cycle = '0;
+    done = 1'b1;
+    $display("[%0d] Test %s passed!", current_test_id, test_type);
   endtask
 
-  integer i;
+  logic [31:0] num_cycles = '0;
+  logic [31:0] num_insts  = '0;
+  logic [4:0]  RD, RS1, RS2;
+  logic [31:0] RD1, RD2;
+  logic [4:0]  SHAMT;
+  logic [31:0] IMM, IMM0, IMM1, IMM2, IMM3;
+  logic [14:0] INST_ADDR;
+  logic [14:0] DATA_ADDR;
+  logic [14:0] DATA_ADDR0, DATA_ADDR1, DATA_ADDR2, DATA_ADDR3;
+  logic [14:0] DATA_ADDR4, DATA_ADDR5, DATA_ADDR6, DATA_ADDR7;
+  logic [14:0] DATA_ADDR8, DATA_ADDR9;
 
-  reg [31:0] num_cycles = 0;
-  reg [31:0] num_insts  = 0;
-  reg [4:0]  RD, RS1, RS2;
-  reg [31:0] RD1, RD2;
-  reg [4:0]  SHAMT;
-  reg [31:0] IMM, IMM0, IMM1, IMM2, IMM3;
-  reg [14:0] INST_ADDR;
-  reg [14:0] DATA_ADDR;
-  reg [14:0] DATA_ADDR0, DATA_ADDR1, DATA_ADDR2, DATA_ADDR3;
-  reg [14:0] DATA_ADDR4, DATA_ADDR5, DATA_ADDR6, DATA_ADDR7;
-  reg [14:0] DATA_ADDR8, DATA_ADDR9;
+  logic [31:0] JUMP_ADDR;
 
-  reg [31:0] JUMP_ADDR;
-
-  reg [31:0]  BR_TAKEN_OP1  [5:0];
-  reg [31:0]  BR_TAKEN_OP2  [5:0];
-  reg [31:0]  BR_NTAKEN_OP1 [5:0];
-  reg [31:0]  BR_NTAKEN_OP2 [5:0];
-  reg [2:0]   BR_TYPE       [5:0];
-  reg [255:0] BR_NAME_TK1   [5:0];
-  reg [255:0] BR_NAME_TK2   [5:0];
-  reg [255:0] BR_NAME_NTK   [5:0];
+  logic [31:0] BR_TAKEN_OP1  [6];
+  logic [31:0] BR_TAKEN_OP2  [6];
+  logic [31:0] BR_NTAKEN_OP1 [6];
+  logic [31:0] BR_NTAKEN_OP2 [6];
+  logic [2:0]  BR_TYPE       [6];
+  string       BR_NAME_TK1   [6];
+  string       BR_NAME_TK2   [6];
+  string       BR_NAME_NTK   [6];
 
   initial begin
     `ifndef IVERILOG
@@ -193,16 +185,15 @@ module cpu_tb();
         $dumpvars(0, cpu_tb);
     `endif
 
-    #0;
-    rst = 0;
+    rst = 1'b0;
 
     // Reset the CPU
-    rst = 1;
+    rst = 1'b1;
     // Hold reset for a while
     repeat (10) @(posedge clk);
 
     @(negedge clk);
-    rst = 0;
+    rst = 1'b0;
 
     // Test R-Type Insts --------------------------------------------------
     // - ADD, SUB, SLL, SLT, SLTU, XOR, OR, AND, SRL, SRA
@@ -517,7 +508,7 @@ module cpu_tb();
     BR_TAKEN_OP1[5]  = 32'hFFFF_0000; BR_TAKEN_OP2[5]  = 32'h0000_0001;
     BR_NTAKEN_OP1[5] = 32'h0000_0001; BR_NTAKEN_OP2[5] = 32'hFFFF_0000;
 
-    for (i = 0; i < 6; i = i + 1) begin
+    for (int i = 0; i < 6; i++) begin
       reset();
 
       `RF_PATH.mem[1] = BR_TAKEN_OP1[i];
@@ -563,22 +554,22 @@ module cpu_tb();
 
     reset_cpu();
 
-    current_test_id = current_test_id + 1;
+    current_test_id++;
     current_test_type = "CSRRW Test";
-    done = 0;
+    done = 1'b0;
     while (`CSR_PATH !== `RF_PATH.mem[1])
       @(posedge clk);
-    done = 1;
+    done = 1'b1;
 
-    $display("[%d] Test CSRRW passed!", current_test_id);
+    $display("[%0d] Test CSRRW passed!", current_test_id);
 
-    current_test_id = current_test_id + 1;
+    current_test_id++;
     current_test_type = "CSRRWI Test";
-    done = 0;
+    done = 1'b0;
     wait (`CSR_PATH === IMM);
-    done = 1;
+    done = 1'b1;
 
-    $display("[%d] Test CSRRWI passed!", current_test_id);
+    $display("[%0d] Test CSRRWI passed!", current_test_id);
 
     // Test Hazards -------------------------------------------------------
     // ALU->ALU hazard (RS1)
@@ -727,7 +718,7 @@ module cpu_tb();
     check_result_rf(5'd3, `RF_PATH.mem[2] + 32'h1000_0004, "Hazard 12");
 
     // ... what else?
-    all_tests_passed = 1'b1;
+    all_tests_passed = 1;
 
     repeat (100) @(posedge clk);
     $display("All tests passed!");
@@ -735,3 +726,5 @@ module cpu_tb();
   end
 
 endmodule
+
+`default_nettype wire
