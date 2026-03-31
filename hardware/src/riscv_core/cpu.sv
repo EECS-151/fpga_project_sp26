@@ -30,7 +30,7 @@ module cpu #(
     // Synchronous read: read takes one cycle
     // Synchronous write: write takes one cycle
     // Write-byte-enable: select which of the four bytes to write
-    logic [13:0] dmem_addr;
+    logic [14:0] dmem_addr;
     logic [31:0] dmem_din, dmem_dout;
     logic [3:0] dmem_we;
     logic dmem_en;
@@ -48,7 +48,7 @@ module cpu #(
     // Synchronous write: write takes one cycle
     // Write-byte-enable: select which of the four bytes to write
     logic [31:0] imem_dina, imem_doutb;
-    logic [13:0] imem_addra, imem_addrb;
+    logic [14:0] imem_addra, imem_addrb;
     logic [3:0] imem_wea;
     logic imem_ena;
     imem imem (

@@ -119,19 +119,19 @@ module mmult_small_tb();
 
     for (i = 0; i < 4; i = i + 1) begin
       for (j = 0; j < 4; j = j + 1) begin
-        $display("A: %d, %d: %x", i, j, `DMEM_PATH.mem[2256/4 + i * 4 + j]);
+        $display("A: %d, %d: %x", i, j, `DMEM_PATH.mem[527 + i * 4 + j]);
       end
     end
     $display("");
     for (i = 0; i < 4; i = i + 1) begin
       for (j = 0; j < 4; j = j + 1) begin
-        $display("B: %d, %d: %x", i, j, `DMEM_PATH.mem[2384/4 + i * 4 + j]);
+        $display("B: %d, %d: %x", i, j, `DMEM_PATH.mem[559 + i * 4 + j]);
       end
     end
     $display("");
     for (i = 0; i < 4; i = i + 1) begin
       for (j = 0; j < 4; j = j + 1) begin
-        $display("S: %d, %d: %x", i, j, `DMEM_PATH.mem[2320/4 + i * 4 + j]);
+        $display("S: %d, %d: %x", i, j, `DMEM_PATH.mem[543 + i * 4 + j]);
       end
     end
 

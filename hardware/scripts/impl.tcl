@@ -20,3 +20,4 @@ report_drc -file post_route_drc.rpt
 report_timing_summary -warn_on_violation -file post_route_timing_summary.rpt
 
 write_bitstream -force ${TOP}.bit
+write_debug_probes -force ${TOP}.ltx
