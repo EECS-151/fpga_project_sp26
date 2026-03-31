@@ -1,0 +1,4 @@
+board:
+  name: eecs151_core
+  vendor: berkeley
+  soc: sifive_freedom

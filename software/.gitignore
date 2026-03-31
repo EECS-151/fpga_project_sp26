@@ -3,5 +3,7 @@
 *.log
 *.hex
 *.elf
-rtos/build
+
+## RTOS
 rtos/venv
+rtos/build

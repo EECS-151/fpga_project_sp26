@@ -11,9 +11,12 @@ VCS                     := vcs -full64
 VCS_OPTS                := -notice -line +lint=all,noVCDE,noNS,noSVA-UA -sverilog -kdb -timescale=1ns/10ps -debug +define+ABS_TOP=$(ABS_TOP) +incdir+$(ABS_TOP)/src/riscv_core
 SIM_RTL                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim -type f -name "*.sv"))
 SIM_MODELS              := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim_models -type f -name "*.sv"))
+# TODO (checkpoint 3): add your divider to the sim models
+# SIM_MODELS              += $(ABS_TOP)/../vivado_1/vivado_1.gen/sources_1/ip/...
 XPM_MODELS              := /share/instsww/xilinx/2025.2/data/ip/xpm/xpm_cdc/hdl/xpm_cdc.sv \
                            /share/instsww/xilinx/2025.2/data/ip/xpm/xpm_memory/hdl/xpm_memory.sv \
                            /share/instsww/xilinx/2025.2/data/ip/xpm/xpm_fifo/hdl/xpm_fifo.sv
+IVERILOG_SIM_MODELS     := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim_models -type f -name "*.sv"))
 IVERILOG                := iverilog
 IVERILOG_OPTS           := -Ttyp -D IVERILOG=1 -g2012 -gassertions -Wall -Wno-timescale -D ABS_TOP=$(ABS_TOP) -I $(ABS_TOP)/src/riscv_core -I $(ABS_TOP)/sim
 VVP                     := vvp
@@ -26,6 +29,15 @@ C_TESTS                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/../s
 C_TESTS_FILES           := $(notdir $(C_TESTS))
 C_TESTS_FST             := $(addprefix sim/c_tests/,$(subst .c,.fst,$(C_TESTS_FILES)))
 VERDI                   ?= /share/instsww/synopsys-new/verdi/T-2022.06-SP2/bin/verdi
+
+XILINX_VIVADO := /share/instsww/xilinx/2025.2
+UNISIM_LIB    := $(XILINX_VIVADO)/data/verilog/src/unisims
+RETARGET_LIB  := $(XILINX_VIVADO)/data/verilog/src/retarget
+
+XIL_SIM_ARGS := -v $(UNISIM_LIB)/../glbl.v \
+                -v $(UNISIM_LIB)/../retarget/CPU_GENERIC.v \
+                -y $(UNISIM_LIB) +libext+.v \
+                +incdir+$(UNISIM_LIB)
 
 sim/%.tb: sim/%.sv $(RTL) $(SIM_MODELS)
 	cd sim && $(VCS) $(VCS_OPTS) -o $*.tb $(XIL_SIM_ARGS) $(RTL) $(SIM_MODELS) $(XPM_MODELS) $*.sv -top $* -top glbl

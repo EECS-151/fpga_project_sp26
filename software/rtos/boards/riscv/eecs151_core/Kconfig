@@ -1,0 +1,3 @@
+if BOARD_EECS151_CORE
+source "$(BOARD_DIR)/Kconfig.defconfig"
+endif
