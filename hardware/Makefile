@@ -11,6 +11,7 @@ VCS                     := vcs -full64
 VCS_OPTS                := -fgp -notice -line +lint=all,noVCDE,noNS,noSVA-UA -sverilog -kdb -timescale=1ns/10ps -debug +define+ABS_TOP=$(ABS_TOP) +incdir+$(ABS_TOP)/src/riscv_core
 SIM_RTL                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim -type f -name "*.sv"))
 SIM_MODELS              := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim_models -type f -name "*.sv"))
+# TODO (checkpoint 3) - Add to SIM_MODELS here
 
 XPM_MODELS              := /share/instsww/xilinx/2025.2/data/ip/xpm/xpm_cdc/hdl/xpm_cdc.sv \
                            /share/instsww/xilinx/2025.2/data/ip/xpm/xpm_memory/hdl/xpm_memory.sv \
