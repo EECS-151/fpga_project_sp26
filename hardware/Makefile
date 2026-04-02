@@ -92,13 +92,15 @@ sim/c_tests/fpmmult.vpd: sim/c_tests/fpc_tests_tb.tb $(ABS_TOP)/../software/fpmm
 fpmmult-test: sim/c_tests/fpmmult.fsdb
 
 # ── FPGA Build Targets ────────────────────────────────────────────────────────
+# ── FPGA Build Targets ────────────────────────────────────────────────────────
 build/target.tcl: $(RTL) $(CONSTRAINTS)
 	mkdir -p build
 	truncate -s 0 $@
-	echo "set ABS_TOP $(ABS_TOP)" >> $@
-	echo "set TOP $(TOP)" >> $@
-	echo "set FPGA_PART $(FPGA_PART)" >> $@
-	echo "set_param general.maxThreads 4" >> $@
+	echo "set ABS_TOP      $(ABS_TOP)"      >> $@
+	echo "set TOP          $(TOP)"          >> $@
+	echo "set FPGA_PART    $(FPGA_PART)"    >> $@
+	echo "set_param general.maxThreads   4" >> $@
+	echo "set_param general.maxBackupLogs 0" >> $@
 	echo -n "set RTL { " >> $@
 	FLIST="$(RTL)"; for f in $$FLIST; do echo -n "$$f " ; done >> $@
 	echo "}" >> $@
@@ -106,9 +108,64 @@ build/target.tcl: $(RTL) $(CONSTRAINTS)
 	FLIST="$(CONSTRAINTS)"; for f in $$FLIST; do echo -n "$$f " ; done >> $@
 	echo "}" >> $@
 
+setup: build/target.tcl
+
+# Actual Synthesis Recipe
+build/synth/$(TOP).dcp: build/target.tcl $(SCRIPTS)/synth.tcl
+	mkdir -p ./build/synth/
+	cd ./build/synth/ && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/synth.tcl |& tee synth.log
+
 synth: build/synth/$(TOP).dcp
+
+# Actual Implementation Recipe
+build/impl/$(TOP).bit: build/synth/$(TOP).dcp $(SCRIPTS)/impl.tcl
+	mkdir -p ./build/impl/
+	cd ./build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/impl.tcl |& tee impl.log
+
 impl: build/impl/$(TOP).bit
 all: build/impl/$(TOP).bit
+
+program: build/impl/$(TOP).bit $(SCRIPTS)/program.tcl
+	@rm -f $(SCRIPTS)/assign_board_test_log.tmp; \
+	assign-fpga-board > $(SCRIPTS)/assign_board_test_log.tmp 2>&1 & \
+	ASSIGN_PID=$$!; \
+	while ! grep -q "Vivado hw_server port:" $(SCRIPTS)/assign_board_test_log.tmp && ! grep -q "already have an instance" $(SCRIPTS)/assign_board_test_log.tmp; do \
+		sleep 0.1; \
+	done; \
+	if grep -q "already have an instance" $(SCRIPTS)/assign_board_test_log.tmp; then \
+		PORT=$$(cat $(SCRIPTS)/port.tmp); \
+		SERIAL=$$(cat $(SCRIPTS)/serial.tmp); \
+	else \
+		sleep infinity | assign-fpga-board > $(SCRIPTS)/assign_board_log.tmp 2>&1 & \
+		while ! grep -q "Vivado hw_server port:" $(SCRIPTS)/assign_board_log.tmp && ! grep -q "already have an instance" $(SCRIPTS)/assign_board_log.tmp; do \
+			sleep 0.1; \
+		done; \
+		PORT=$$(grep -oP 'Vivado hw_server port: \K\d+' $(SCRIPTS)/assign_board_log.tmp); \
+		SERIAL=$$(grep -oP 'serial \K[A-Z0-9]+' $(SCRIPTS)/assign_board_log.tmp); \
+		echo $$PORT > $(SCRIPTS)/port.tmp; \
+		echo $$SERIAL > $(SCRIPTS)/serial.tmp; \
+		/share/instsww/xilinx/2025.2/Vivado/bin/hw_server -stcp:localhost:$$PORT > /dev/null 2>&1 & \
+	fi; \
+	echo "BOARD SERIAL: $$SERIAL"; \
+	cd build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/program.tcl -tclargs $$PORT
+
+program-force:
+	cd build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/program.tcl
+
+vivado: build
+	cd build && nohup $(VIVADO) </dev/null >/dev/null 2>&1 &
+
+lint:
+	verilator -DABS_TOP=$(ABS_TOP) --lint-only --top-module $(TOP) $(RTL) -I$(ABS_TOP)/src/riscv_core $(ABS_TOP)/stubs/PLLE2_ADV.sv $(ABS_TOP)/sim_models/BUFG.sv
+
+sim_build/compile_simlib/synopsys_sim.setup:
+	mkdir -p sim_build/compile_simlib
+	cd build/sim_build/compile_simlib && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/compile_simlib.tcl
+
+compile_simlib: sim_build/compile_simlib/synopsys_sim.setup
+
+screen:
+	screen /dev/ttyUSB0 115200
 
 clean-sim:
 	rm -rf *.daidir sim/output.txt \
@@ -120,5 +177,5 @@ clean-sim:
 clean-build:
 	rm -rf ./build
 
-.PHONY: setup synth impl program program-force vivado all clean-build clean-sim isa-tests-vcs c-tests fpmmult-test
-.PRECIOUS: sim/%.tb sim/%.vpd sim/%.fsdb sim/isa/isa_tb.tb sim/isa/%.vpd sim/isa/%.fsdb sim/c_tests/%.tb sim/c_tests/%.vpd
+.PHONY: setup synth impl program program-force vivado all clean-build clean-sim isa-tests isa-tests-vcs isa-tests-vcs-fsdb %.tb
+.PRECIOUS: sim/%.tb sim/%.tbi sim/%.fst sim/%.vpd sim/isa/isa_tb.tb sim/isa/%.vpd sim/isa/%.fsdb
