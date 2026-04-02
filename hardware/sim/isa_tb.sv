@@ -38,6 +38,7 @@ module isa_tb();
     `ifndef IVERILOG
         $vcdpluson;
     `endif
+    
     if (!$value$plusargs("hex_file=%s", hex_file)) begin
       $display("Must supply hex_file!");
       $fatal();
@@ -53,6 +54,7 @@ module isa_tb();
 
     $dumpfile({test_name, ".fst"});
     $dumpvars(0, isa_tb);
+    
 
     rst = 0;
 
