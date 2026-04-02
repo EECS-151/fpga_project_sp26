@@ -66,7 +66,40 @@ sim/isa/%.fsdb: sim/isa/%.vpd
 	@cd sim/isa && $(VPD2FSDB) $*.vpd -o $*.fsdb > /dev/null 2>&1
 
 isa-tests-vcs: $(ISA_TESTS_FSDB)
-	@# ... (Results printing logic same as original) ...
+	@echo ""
+	@echo "============================================================"
+	@echo " VCS ISA Test Results"
+	@echo "============================================================"
+	@printf "%-30s %8s  %s\n" "TEST" "CYCLES" "RESULT"
+	@printf "%-30s %8s  %s\n" "----" "------" "------"
+	@total=0; passed=0; failed=0; timeout=0; \
+	for vpd in $(ISA_TESTS_VPD); do \
+		test=$$(basename $$vpd .vpd); \
+		log=sim/isa/$$test.log; \
+		total=$$((total + 1)); \
+		if [ ! -f $$log ]; then \
+			printf "%-30s %8s  %s\n" "$$test" "-" "NO LOG"; \
+		elif grep -q "\[passed\]" $$log; then \
+			cycles=$$(grep "\[passed\]" $$log | grep -oP 'in\s+\K[0-9]+'); \
+			printf "%-30s %8s  %s\n" "$$test" "$$cycles" "PASSED"; \
+			passed=$$((passed + 1)); \
+		elif grep -q "\[failed\]" $$log; then \
+			printf "%-30s %8s  %s\n" "$$test" "-" "FAILED"; \
+			failed=$$((failed + 1)); \
+		elif grep -qiE "TIMEOUT|simulation time limit" $$log; then \
+			printf "%-30s %8s  %s\n" "$$test" "-" "TIMEOUT"; \
+			timeout=$$((timeout + 1)); \
+		else \
+			printf "%-30s %8s  %s\n" "$$test" "-" "UNKNOWN"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo "============================================================"; \
+	printf "Total: $$total  |  Passed: $$passed  |  Failed: $$failed  |  Timeout: $$timeout\n"; \
+	echo "============================================================"
+
+isa-tests-vcs-fsdb: $(ISA_TESTS_FSDB)
+
 
 # ── C Tests (VCS) ─────────────────────────────────────────────────────────────
 sim/c_tests/c_tests_tb.tb: sim/c_tests_tb.sv $(RTL) $(SIM_MODELS)
