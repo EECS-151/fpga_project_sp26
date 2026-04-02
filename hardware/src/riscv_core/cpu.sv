@@ -105,7 +105,7 @@ module cpu #(
         .data_in_ready(uart_tx_data_in_ready)
     );
 
-    logic tohost_csr = 0;
+    logic [31:0] tohost_csr = 0;
     
     // TODO: Your code to implement a fully functioning RISC-V core
     // Add as many modules as you want
