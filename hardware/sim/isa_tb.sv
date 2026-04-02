@@ -35,6 +35,9 @@ module isa_tb();
   string hex_file;
   string test_name;
   initial begin
+    `ifndef IVERILOG
+        $vcdpluson;
+    `endif
     if (!$value$plusargs("hex_file=%s", hex_file)) begin
       $display("Must supply hex_file!");
       $fatal();
