@@ -5,7 +5,7 @@
 `include "mem_path.vh"
 
 // This testbench tests if the cpu module can decode and execute
-// all the instructions specified in the spec (RV32I -- including CSRRW and CSRRWI).
+// all the instructions specified in the spec (RV32I plus Zicsr CSR: CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI).
 // Some tests for data hazards and control hazards are also included.
 
 // How does the testbench work?
@@ -104,7 +104,7 @@ module cpu_tb;
     end
   end
 
-  always @(posedge clk) begin
+  always_ff @(posedge clk) begin
     if (!done)
       cycle <= cycle + 32'd1;
     else
@@ -541,35 +541,91 @@ module cpu_tb;
       check_result_rf(5'd5, 700, BR_NAME_NTK[i]);
     end
 
-    // Test CSR Insts -----------------------------------------------------
-    // - CSRRW, CSRRWI
+    // Test CSR Insts (Zicsr) ----------------------------------------------
+    // - CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI
+    // Verifies CSR semantics by reading the CSR via the `rd` result of the csrr* instructions,
+    // instead of directly probing internal CSR wires.
+
+    // CSRRW:
+    //   1) csrrwi x0, tohost, 17        => CSR = 17
+    //   2) csrrw  x5, tohost, x1     => x5 = old(17), CSR = x1(100)
+    //   3) csrrs  x6, tohost, x0     => x6 = CSR (read-only, rs1=x0)
     reset();
-
-    `RF_PATH.mem[1] = 100;
-    IMM       = 5'd16;
-    INST_ADDR = 14'h0000;
-
-    `IMEM_PATH.mem[INST_ADDR + 0] = {12'h51e, 5'd1,     3'b001, 5'd0, `OPC_CSR};
-    `IMEM_PATH.mem[INST_ADDR + 1] = {12'h51e, IMM[4:0], 3'b101, 5'd0, `OPC_CSR};
-
+    `RF_PATH.mem[1]  = 32'd100;
+    INST_ADDR        = 14'h0000;
+    `IMEM_PATH.mem[INST_ADDR + 0] = {12'h51e, 5'd17, 3'b101, 5'd0,  `OPC_CSR}; // CSRRWI x0, tohost, 17
+    `IMEM_PATH.mem[INST_ADDR + 1] = {12'h51e, 5'd1,  3'b001, 5'd5,  `OPC_CSR}; // CSRRW  x5, tohost, x1
+    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h51e, 5'd0,  3'b010, 5'd6,  `OPC_CSR}; // CSRRS  x6, tohost, x0 (read-only)
     reset_cpu();
+    check_result_rf(5'd5, 32'd17,  "Zicsr CSRRW old CSR (rd=old)");
+    check_result_rf(5'd6, 32'd100, "Zicsr CSRRW new CSR (read-back)");
 
-    current_test_id++;
-    current_test_type = "CSRRW Test";
-    done = 1'b0;
-    while (`CSR_PATH !== `RF_PATH.mem[1])
-      @(posedge clk);
-    done = 1'b1;
+    // CSRRWI:
+    //   1) csrrwi x0, tohost, 10        => CSR = 10
+    //   2) csrrwi x7, tohost, 25       => x7 = old(10), CSR = 25
+    //   3) csrrs  x8, tohost, x0       => x8 = CSR (25)
+    reset();
+    INST_ADDR = 14'h0000;
+    `IMEM_PATH.mem[INST_ADDR + 0] = {12'h51e, 5'd10, 3'b101, 5'd0, `OPC_CSR}; // CSRRWI x0, tohost, 10
+    `IMEM_PATH.mem[INST_ADDR + 1] = {12'h51e, 5'd25, 3'b101, 5'd7, `OPC_CSR}; // CSRRWI x7, tohost, 25
+    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h51e, 5'd0,  3'b010, 5'd8, `OPC_CSR}; // CSRRS x8, tohost, x0
+    reset_cpu();
+    check_result_rf(5'd7, 32'd10, "Zicsr CSRRWI old CSR (rd=old)");
+    check_result_rf(5'd8, 32'd25, "Zicsr CSRRWI new CSR (read-back)");
 
-    $display("[%0d] Test CSRRW passed!", current_test_id);
+    // CSRRS:
+    //   1) csrrwi x0, tohost, 5         => CSR = 5
+    //   2) csr rs x2, tohost, x1       => x2 = old(5), CSR = 5 | x1
+    //   3) csrrs x3, tohost, x0        => x3 = CSR (read-back)
+    reset();
+    `RF_PATH.mem[1] = 32'd24; // 0b11000
+    INST_ADDR       = 14'h0000;
+    `IMEM_PATH.mem[INST_ADDR + 0] = {12'h51e, 5'd5,  3'b101, 5'd0, `OPC_CSR}; // CSRRWI x0, tohost, 5
+    `IMEM_PATH.mem[INST_ADDR + 1] = {12'h51e, 5'd1,  3'b010, 5'd2, `OPC_CSR}; // CSRRS  x2, tohost, x1
+    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h51e, 5'd0,  3'b010, 5'd3, `OPC_CSR}; // CSRRS  x3, tohost, x0
+    reset_cpu();
+    check_result_rf(5'd2, 32'd5,  "Zicsr CSRRS old CSR (rd=old)");
+    check_result_rf(5'd3, 32'd29, "Zicsr CSRRS new CSR (5|24)");
 
-    current_test_id++;
-    current_test_type = "CSRRWI Test";
-    done = 1'b0;
-    wait (`CSR_PATH === IMM);
-    done = 1'b1;
+    // CSRRC:
+    //   1) csrrwi x0, tohost, 31        => CSR = 31
+    //   2) csr rc x2, tohost, x1       => x2 = old(31), CSR = 31 & ~x1
+    //   3) csrrs x3, tohost, x0        => x3 = CSR (read-back)
+    reset();
+    `RF_PATH.mem[1] = 32'd5; // 0b00101
+    INST_ADDR       = 14'h0000;
+    `IMEM_PATH.mem[INST_ADDR + 0] = {12'h51e, 5'd31, 3'b101, 5'd0, `OPC_CSR}; // CSRRWI x0, tohost, 31
+    `IMEM_PATH.mem[INST_ADDR + 1] = {12'h51e, 5'd1,  3'b011, 5'd2, `OPC_CSR}; // CSRRC  x2, tohost, x1
+    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h51e, 5'd0,  3'b010, 5'd3, `OPC_CSR}; // CSRRS  x3, tohost, x0
+    reset_cpu();
+    check_result_rf(5'd2, 32'd31, "Zicsr CSRRC old CSR (rd=old)");
+    check_result_rf(5'd3, 32'd26, "Zicsr CSRRC new CSR (31 & ~5)");
 
-    $display("[%0d] Test CSRRWI passed!", current_test_id);
+    // CSRRSI:
+    //   1) csrrwi x0, tohost, 2         => CSR = 2
+    //   2) csrrsi x2, tohost, 4        => x2 = old(2), CSR = 2 | 4
+    //   3) csrrs  x3, tohost, x0       => x3 = CSR (read-back)
+    reset();
+    INST_ADDR = 14'h0000;
+    `IMEM_PATH.mem[INST_ADDR + 0] = {12'h51e, 5'd2, 3'b101, 5'd0, `OPC_CSR};  // CSRRWI x0, tohost, 2
+    `IMEM_PATH.mem[INST_ADDR + 1] = {12'h51e, 5'd4, 3'b110, 5'd2, `OPC_CSR};  // CSRRSI x2, tohost, 4
+    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h51e, 5'd0, 3'b010, 5'd3, `OPC_CSR};  // CSRRS  x3, tohost, x0
+    reset_cpu();
+    check_result_rf(5'd2, 32'd2, "Zicsr CSRRSI old CSR (rd=old)");
+    check_result_rf(5'd3, 32'd6, "Zicsr CSRRSI new CSR (2|4)");
+
+    // CSRRCI:
+    //   1) csrrwi x0, tohost, 7         => CSR = 7
+    //   2) csrrci x2, tohost, 2        => x2 = old(7), CSR = 7 & ~2
+    //   3) csrrs  x3, tohost, x0       => x3 = CSR (read-back)
+    reset();
+    INST_ADDR = 14'h0000;
+    `IMEM_PATH.mem[INST_ADDR + 0] = {12'h51e, 5'd7, 3'b101, 5'd0, `OPC_CSR};  // CSRRWI x0, tohost, 7
+    `IMEM_PATH.mem[INST_ADDR + 1] = {12'h51e, 5'd2, 3'b111, 5'd2, `OPC_CSR};  // CSRRCI x2, tohost, 2
+    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h51e, 5'd0, 3'b010, 5'd3, `OPC_CSR};  // CSRRS  x3, tohost, x0
+    reset_cpu();
+    check_result_rf(5'd2, 32'd7, "Zicsr CSRRCI old CSR (rd=old)");
+    check_result_rf(5'd3, 32'd5, "Zicsr CSRRCI new CSR (7 & ~2)");
 
     // Test Hazards -------------------------------------------------------
     // ALU->ALU hazard (RS1)
