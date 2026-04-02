@@ -104,7 +104,7 @@ module cpu_tb;
     end
   end
 
-  always_ff @(posedge clk) begin
+  always @(posedge clk) begin
     if (!done)
       cycle <= cycle + 32'd1;
     else
