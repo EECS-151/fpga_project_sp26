@@ -3,9 +3,9 @@ module z1top #(
     // Warning: CPU_CLOCK_FREQ must match the PLL parameters!
     parameter int CPU_CLOCK_FREQ = 100_000_000,
     // PLL Parameters: sets the CPU clock = 100Mhz * 36 / 4 / 9 = 100 MHz
-    parameter int CPU_CLK_CLKFBOUT_MULT = 40,
-    parameter int CPU_CLK_DIVCLK_DIVIDE = 4,
-    parameter int CPU_CLK_CLKOUT_DIVIDE  = 10,
+    parameter int CPU_CLK_CLKFBOUT_MULT = 12,
+    parameter int CPU_CLK_DIVCLK_DIVIDE = 1,
+    parameter int CPU_CLK_CLKOUT_DIVIDE  = 12,
     
     /* verilator lint_off REALCVT */
     // Sample the button signal every 500us
