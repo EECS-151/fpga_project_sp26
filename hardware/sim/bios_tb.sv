@@ -28,7 +28,8 @@ module bios_tb();
     .rst(rst),
     .system_clk(clk),
     .serial_in(serial_in),   // input
-    .serial_out(serial_out)  // output
+    .serial_out(serial_out),  // output
+    .errors()
   );
 
   integer i, j;

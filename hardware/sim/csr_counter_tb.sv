@@ -20,7 +20,7 @@ module csr_counter_tb();
     .RESET_PC(32'h1000_0000)
   ) cpu (
     .clk(clk), .rst(rst), .system_clk(clk),
-    .serial_in(1'b1), .serial_out()
+    .serial_in(1'b1), .serial_out(), .errors()
   );
 
   reg [31:0] cycle;

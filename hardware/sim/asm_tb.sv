@@ -18,7 +18,8 @@ module asm_tb();
     .rst(rst),
     .system_clk(clk),
     .serial_in(1'b1),
-    .serial_out()
+    .serial_out(),
+    .errors()
   );
 
   // A task to check if the value contained in a register equals an expected value

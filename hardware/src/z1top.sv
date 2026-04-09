@@ -91,6 +91,7 @@ module z1top #(
         .sync_signal(switches_sync)
     );
 
+    logic [2:0] cpu_error_vector;
     cpu #(
         .CPU_CLOCK_FREQ(CPU_CLOCK_FREQ),
         .SYSTEM_CLOCK_FREQ(100_000_000),
@@ -102,8 +103,17 @@ module z1top #(
         .system_clk(CLK_100MHZ),
         .bp_enable(switches_sync[0]),
         .serial_out(cpu_tx),
-        .serial_in(cpu_rx)
+        .serial_in(cpu_rx),
+        .errors(cpu_error_vector)
     );
 
-    assign LEDS = 8'd0;
+    logic [2:0] error_vector;
+    always_ff @(posedge cpu_clk) begin
+        if (cpu_reset)
+            error_vector <= 3'b0;
+        else
+            error_vector <= error_vector | cpu_error_vector;
+    end
+
+    assign LEDS = {5'd0, error_vector[2:0]};
 endmodule

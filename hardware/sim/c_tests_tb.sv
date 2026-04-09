@@ -26,7 +26,8 @@ module c_tests_tb();
     .rst(rst),
     .system_clk(clk),
     .serial_in(1'b1), // input
-    .serial_out()     // output
+    .serial_out(),     // output
+    .errors()
   );
 
   reg [31:0] cycle;

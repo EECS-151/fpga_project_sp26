@@ -35,7 +35,8 @@ module zephyr_tb;
     .rst(rst),
     .bp_enable(bp_enable),
     .serial_in(serial_in),   // input
-    .serial_out(serial_out)  // output
+    .serial_out(serial_out),  // output
+    .errors()
   );
 
   logic [31:0] cycle;

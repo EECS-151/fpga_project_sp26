@@ -9,7 +9,8 @@ module cpu #(
     input logic system_clk,
     input logic bp_enable,
     input logic serial_in,
-    output logic serial_out
+    output logic serial_out,
+    output logic [2:0] errors
 );
     // BIOS Memory
     // Synchronous read: read takes one cycle
@@ -106,7 +107,14 @@ module cpu #(
     );
 
     logic [31:0] tohost_csr = 0;
-    
+
+    // Illegal instruction / trap aggregation (stub: tie low until core reports faults)
+    assign errors[0] = uart_rx_overflow; // input buffer overflowed
+    // Optional TODO: errors[1] is raised when PC is invalid (ie. not in IMEM or BIOS)
+    assign errors[1] = 1'b0;
+    // Optional TODO: errors[2] is raised when a memory access is invalid (ie. outside of IMEM, DMEM, BIOS, MMIO etc.)
+    assign errors[2] = 1'b0;
+
     // TODO: Your code to implement a fully functioning RISC-V core
     // Add as many modules as you want
     // Feel free to move the memory modules around

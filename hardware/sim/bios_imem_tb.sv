@@ -30,7 +30,8 @@ module bios_imem_tb();
     .rst(rst),
     .system_clk(clk),
     .serial_in(1'b1),
-    .serial_out()
+    .serial_out(),
+    .errors()
   );
 
   wire [31:0] timeout_cycle = 10;

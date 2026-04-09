@@ -28,7 +28,8 @@ module m_extension_tb;
     .rst(rst),
     .bp_enable(bp_enable),
     .serial_in(1'b1),
-    .serial_out()
+    .serial_out(),
+    .errors()
   );
 
   // Divider can take many cycles; MUL is also multicycle in this core

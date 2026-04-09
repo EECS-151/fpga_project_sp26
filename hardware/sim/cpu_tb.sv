@@ -50,7 +50,8 @@ module cpu_tb;
     .rst(rst),
     .system_clk(clk),
     .serial_in(1'b1),
-    .serial_out()
+    .serial_out(),
+    .errors()
   );
 
   localparam int unsigned TimeoutCycle = 10;
