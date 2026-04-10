@@ -12,8 +12,9 @@ elements = {'LUT6': 1713,
             'LUT3': 429,
             'LUT2': 429,
             'CARRY4': 54,
+            'CARRY8': 108,
             'RAMD32': 857,
-            'RAMB36E1': 0,
+            'RAMB36E2': 0,
             'RAMS32': 857,
             'RAMS64E': 1713,
             'FDSE': 107,
@@ -22,19 +23,28 @@ elements = {'LUT6': 1713,
             'MUXF8': 7,
             'OBUFT': 0,
             'IBUF': 0,
+            'IBUFCTRL': 0,
+            'BUFGCE': 0,
+            'INBUF': 0,
+            'DIFFINBUF': 0,
+            'MMCME4_ADV': 0,
             'FDCE': 107,
+            'FDPE': 107,
             'BUFG': 0,
             'SRL16E': 429,
+            'SRLC16E': 429,
+            'SRLC32E': 858,
             'PLLE2_ADV': 0,
             'OBUF': 0,
-            'DSP48E1': 453_659
+            'DSP48E2': 453_659,
+            'BSCANE2': 0
             }
 
 def get_cost(f):
   print('get_cost version ' + version)
   cost = 0
   for line in f:
-    if line.startswith('|  Ref Name | Used | Functional Category |'):
+    if "Ref Name" in line and "Used" in line and "Functional Category" in line:
       next(f)
       line = next(f)
       while not(line.startswith('+')):
