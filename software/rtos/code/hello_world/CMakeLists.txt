@@ -21,4 +21,15 @@ set(CMAKE_ASM_FLAGS "-march=rv32im -mabi=ilp32" CACHE INTERNAL "")
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(hello_world)
 
+set(COREMARK_DIR ${ZEPHYR_BASE}/../modules/benchmark/coremark)
+
+target_sources(app PRIVATE 
+    ${COREMARK_DIR}/core_main.c 
+    ${COREMARK_DIR}/core_matrix.c 
+    ${COREMARK_DIR}/core_list_join.c 
+    ${COREMARK_DIR}/core_state.c 
+    ${COREMARK_DIR}/core_util.c
+    ${ZEPHYR_BASE}/../code/hello_world/src/coremark/core_portme.c
+)
+
 target_sources(app PRIVATE src/main.c)
