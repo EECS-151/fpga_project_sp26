@@ -29,8 +29,7 @@ module timer_interrupt_tb;
     .rst(rst),
     .bp_enable(bp_enable),
     .serial_in(1'b1),
-    .serial_out(),
-    .errors()
+    .serial_out()
   );
 
   task automatic reset;
@@ -74,38 +73,39 @@ module timer_interrupt_tb;
 
     // 0x1000_0000 (0): write to unused reg; 0x1000_0004 (1): jal to 0x1000_0000 (timeout if mret doesn't work)
     `IMEM_PATH.mem[INST_ADDR + 0] = {12'h0DE, 5'd0, 3'b000, 5'd6, `OPC_ARI_ITYPE};   // addi x6, x0, 0xDE  (unused reg)
-    `IMEM_PATH.mem[INST_ADDR + 1] = 32'hFFEFF06F;     // jal x0, 0x10000000  (jump to 00 from 04)
+    `IMEM_PATH.mem[INST_ADDR + 1] = 32'hFFEFF06F;                                    // jal x0, 0x10000000  (jump to 00 from 04)
     // Handler at 0x1000_0008 (mtvec) — only reached via trap
-    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h342, 5'd0, 3'b010, 5'd3, `OPC_CSR};          // csrrs x3, mcause, x0
+    `IMEM_PATH.mem[INST_ADDR + 2] = {12'h342, 5'd0, 3'b010, 5'd3, `OPC_CSR};         // csrrs x3, mcause, x0
     `IMEM_PATH.mem[INST_ADDR + 3] = {12'h011, 5'd0, 3'b000, 5'd1, `OPC_ARI_ITYPE};   // addi x1, x0, 0x11
     `IMEM_PATH.mem[INST_ADDR + 4] = {12'h099, 5'd0, 3'b000, 5'd2, `OPC_ARI_ITYPE};   // addi x2, x0, 0x99
     `IMEM_PATH.mem[INST_ADDR + 5] = {12'hFFF, 5'd0, 3'b000, 5'd8, `OPC_ARI_ITYPE};   // addi x8, x0, 0xFFFFFF
-    `IMEM_PATH.mem[INST_ADDR + 6] = {7'b0, 5'd8, 5'd11, `FNC_SW, 5'b0, `OPC_STORE};    // sw x8, 0(x11)  mtimecmp[31:0]
+    `IMEM_PATH.mem[INST_ADDR + 6] = {7'b0, 5'd8, 5'd11, `FNC_SW, 5'b0, `OPC_STORE};  // sw x8, 0(x11)  mtimecmp[31:0]
     `IMEM_PATH.mem[INST_ADDR + 7] = 32'h30200073;      // mret
     `IMEM_PATH.mem[INST_ADDR + 8] = 32'h0BFEFF06F;     // jal x0, 0x10000000  (timeout if mret didn't work; x6 gets 0xDE)
 
     // Main program starts at 64 (RESET_PC = 0x1000_0100)
     // Setup: enable timer interrupts (mstatus.MIE=1, mie.MTIE=1)
-    `IMEM_PATH.mem[INST_ADDR + 64]  = {12'h300, 5'd8, 3'b110, 5'd0, `OPC_CSR};           // csrrsi x0, mstatus, 8  (mstatus[3]=MIE=1)
-    `IMEM_PATH.mem[INST_ADDR + 65]  = {12'd128, 5'd0, 3'b000, 5'd4, `OPC_ARI_ITYPE};     // addi x4, x0, 128  (1<<7 for MTIE)
-    `IMEM_PATH.mem[INST_ADDR + 66]  = {12'h304, 5'd4, 3'b010, 5'd0, `OPC_CSR};           // csrrs x0, mie, x4  (set mie[7]=MTIE)
-    `IMEM_PATH.mem[INST_ADDR + 67]  = {20'h10000, 5'd5, `OPC_LUI};                       // lui x5, 0x10000
-    `IMEM_PATH.mem[INST_ADDR + 68]  = {12'd8, 5'd5, 3'b000, 5'd5, `OPC_ARI_ITYPE};       // addi x5, x5, 8  -> 0x10000008
-    `IMEM_PATH.mem[INST_ADDR + 69]  = {12'h305, 5'd5, 3'b001, 5'd0, `OPC_CSR};           // csrrw x0, mtvec, x5
+    `IMEM_PATH.mem[INST_ADDR + 64] = {12'h300, 5'd8, 3'b110, 5'd0, `OPC_CSR};                // csrrsi x0, mstatus, 8  (mstatus[3]=MIE=1)
+    `IMEM_PATH.mem[INST_ADDR + 65] = {12'd128, 5'd0, 3'b000, 5'd4, `OPC_ARI_ITYPE};          // addi x4, x0, 128  (1<<7 for MTIE)
+    `IMEM_PATH.mem[INST_ADDR + 66] = {12'h304, 5'd4, 3'b010, 5'd0, `OPC_CSR};                // csrrs x0, mie, x4  (set mie[7]=MTIE)
+    `IMEM_PATH.mem[INST_ADDR + 67] = {20'h10000, 5'd5, `OPC_LUI};                            // lui x5, 0x10000
+    `IMEM_PATH.mem[INST_ADDR + 68] = {12'd8, 5'd5, 3'b000, 5'd5, `OPC_ARI_ITYPE};            // addi x5, x5, 8  -> 0x10000008
+    `IMEM_PATH.mem[INST_ADDR + 69] = {12'h305, 5'd5, 3'b001, 5'd0, `OPC_CSR};                // csrrw x0, mtvec, x5
     // mtimecmp = mtime + 2 (CLINT: mtime @ 0x0200BFF8, mtimecmp @ 0x02004000)
-    `IMEM_PATH.mem[INST_ADDR + 70]  = {20'h02000, 5'd7, `OPC_LUI};                       // lui x7, 0x02000
-    `IMEM_PATH.mem[INST_ADDR + 71]  = {12'hBFF, 5'd7, 3'b110, 5'd7, `OPC_ARI_ITYPE};     // ori x7, x7, 0xBFF
-    `IMEM_PATH.mem[INST_ADDR + 72] = {7'b0000000, 5'd7, 5'd7, 3'b001, 5'd7, `OPC_ARI_ITYPE}; // slli x7, x7, 4
-    `IMEM_PATH.mem[INST_ADDR + 73] = {12'd8, 5'd7, 3'b000, 5'd7, `OPC_ARI_ITYPE};       // addi x7, x7, 8  -> x7=0x0200BFF8
-    `IMEM_PATH.mem[INST_ADDR + 74] = {20'h02004, 5'd11, `OPC_LUI};                      // lui x11, 0x02004  -> x11=0x02004000
-    `IMEM_PATH.mem[INST_ADDR + 75] = {12'd0, 5'd7, 3'b010, 5'd8, `OPC_LOAD};            // lw x8, 0(x7)   mtime[31:0]
-    `IMEM_PATH.mem[INST_ADDR + 76] = {12'd4, 5'd7, 3'b010, 5'd9, `OPC_LOAD};            // lw x9, 4(x7)   mtime[63:32]
-    `IMEM_PATH.mem[INST_ADDR + 77] = {12'd2, 5'd8, 3'b000, 5'd8, `OPC_ARI_ITYPE};       // addi x8, x8, 2
-    `IMEM_PATH.mem[INST_ADDR + 78] = {7'b0, 5'd8, 5'd11, `FNC_SW, 5'b0, `OPC_STORE};    // sw x8, 0(x11)  mtimecmp[31:0]
-    `IMEM_PATH.mem[INST_ADDR + 79] = {7'b0, 5'd9, 5'd11, `FNC_SW, 5'd4, `OPC_STORE};    // sw x9, 4(x11)  mtimecmp[63:32]
-    `IMEM_PATH.mem[INST_ADDR + 80] = {12'd1, 5'd0, 3'b000, 5'd0, `OPC_ARI_ITYPE};       // addi x0, x0, 1  (nop)
-    `IMEM_PATH.mem[INST_ADDR + 81] = {12'd1, 5'd0, 3'b000, 5'd0, `OPC_ARI_ITYPE};       // addi x0, x0, 1  (nop)
-    `IMEM_PATH.mem[INST_ADDR + 82] = {12'h022, 5'd0, 3'b000, 5'd2, `OPC_ARI_ITYPE};     // addi x2, x0, 0x22  (overwrite after mret)
+    `IMEM_PATH.mem[INST_ADDR + 70] = {20'h02000, 5'd7, `OPC_LUI};                            // lui x7, 0x02000
+    `IMEM_PATH.mem[INST_ADDR + 71] = {12'h7FF, 5'd7, 3'b110, 5'd7, `OPC_ARI_ITYPE};          // ori x7, x7, 0x7FF
+    `IMEM_PATH.mem[INST_ADDR + 72] = {12'h400, 5'd7, 3'b000, 5'd7, `OPC_ARI_ITYPE};          // addi x7, x7, 0x400  -> 0x02000BFF
+    `IMEM_PATH.mem[INST_ADDR + 73] = {7'b0000000, 5'd7, 5'd7, 3'b001, 5'd7, `OPC_ARI_ITYPE}; // slli x7, x7, 4
+    `IMEM_PATH.mem[INST_ADDR + 74] = {12'd8, 5'd7, 3'b000, 5'd7, `OPC_ARI_ITYPE};            // addi x7, x7, 8  -> x7=0x0200BFF8
+    `IMEM_PATH.mem[INST_ADDR + 75] = {20'h02004, 5'd11, `OPC_LUI};                           // lui x11, 0x02004  -> x11=0x02004000
+    `IMEM_PATH.mem[INST_ADDR + 76] = {12'd0, 5'd7, 3'b010, 5'd8, `OPC_LOAD};                 // lw x8, 0(x7)   mtime[31:0]
+    `IMEM_PATH.mem[INST_ADDR + 77] = {12'd4, 5'd7, 3'b010, 5'd9, `OPC_LOAD};                 // lw x9, 4(x7)   mtime[63:32]
+    `IMEM_PATH.mem[INST_ADDR + 78] = {12'd2, 5'd8, 3'b000, 5'd8, `OPC_ARI_ITYPE};            // addi x8, x8, 2
+    `IMEM_PATH.mem[INST_ADDR + 79] = {7'b0, 5'd8, 5'd11, `FNC_SW, 5'b0, `OPC_STORE};         // sw x8, 0(x11)  mtimecmp[31:0]
+    `IMEM_PATH.mem[INST_ADDR + 80] = {7'b0, 5'd9, 5'd11, `FNC_SW, 5'd4, `OPC_STORE};         // sw x9, 4(x11)  mtimecmp[63:32]
+    `IMEM_PATH.mem[INST_ADDR + 81] = {12'd1, 5'd0, 3'b000, 5'd0, `OPC_ARI_ITYPE};            // addi x0, x0, 1  (nop)
+    `IMEM_PATH.mem[INST_ADDR + 82] = {12'd1, 5'd0, 3'b000, 5'd0, `OPC_ARI_ITYPE};            // addi x0, x0, 1  (nop)
+    `IMEM_PATH.mem[INST_ADDR + 83] = {12'h022, 5'd0, 3'b000, 5'd2, `OPC_ARI_ITYPE};          // addi x2, x0, 0x22  (overwrite after mret)
 
     reset_cpu();
     cycle = '0;
