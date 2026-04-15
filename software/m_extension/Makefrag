@@ -1,0 +1,3 @@
+ARCH := rv32im
+
+include ../../Makefrag
