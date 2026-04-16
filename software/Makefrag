@@ -8,11 +8,11 @@ CSRCS := $(wildcard *.c)
 SSRCS := $(wildcard *.s)
 LDSRC := $(TARGET).ld
 
-ifeq ($(TARGET), fpmmult)
-    GCC_OPTS += -mabi=ilp32f -march=rv32imf -static -mcmodel=medany -nostdlib -nostartfiles -T $(LDSRC)
-else 
-	GCC_OPTS += -mabi=ilp32 -march=rv32i -static -mcmodel=medany -nostdlib -nostartfiles -T $(LDSRC)
+ifndef ARCH
+ARCH := rv32i
 endif
+
+GCC_OPTS += -mabi=ilp32 -march=$(ARCH) -static -mcmodel=medany -nostdlib -nostartfiles -T $(LDSRC)
 
 default: $(TARGET).elf
 
