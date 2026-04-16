@@ -70,7 +70,7 @@ module m_extension_tb;
     end
   end
 
-  always_ff @(posedge clk) begin
+  always @(posedge clk) begin
     if (!done)
       cycle <= cycle + 1;
     else
