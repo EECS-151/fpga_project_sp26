@@ -5,7 +5,7 @@
 
 int8_t* read_n(int8_t*b, uint32_t n) {
     for (uint32_t i = 0; i < n;  i++) {
-        b[i] =  uread_int8();
+        b[i] =  uread_int8_noecho();
     }
     b[n] = '\0';
     return b;
@@ -47,6 +47,62 @@ void store(uint32_t address, uint32_t length) {
     }
 }
 
+void store_opt(register uint32_t address, register uint32_t length) {
+    volatile uint8_t* const ctrl = (volatile uint8_t*)0x80000014;
+    volatile uint8_t* const data = (volatile uint8_t*)0x80000000;
+    for (register uint32_t i = 0; i < length; i += 4) {
+        uint32_t p = address + i;
+        uint32_t tmp;
+        asm volatile(
+            "1:\n\t"
+            "lbu %[t], 0(%[c])\n\t"
+            "andi %[t], %[t], 1\n\t"
+            "beqz %[t], 1b\n\t"
+            "lbu %[t], 0(%[d])\n\t"
+            "sb %[t], 0(%[p])\n\t"
+            "addi %[p], %[p], 1\n\t"
+            "2:\n\t"
+            "lbu %[t], 0(%[c])\n\t"
+            "andi %[t], %[t], 1\n\t"
+            "beqz %[t], 2b\n\t"
+            "lbu %[t], 0(%[d])\n\t"
+            "sb %[t], 0(%[p])\n\t"
+            "addi %[p], %[p], 1\n\t"
+            "3:\n\t"
+            "lbu %[t], 0(%[c])\n\t"
+            "andi %[t], %[t], 1\n\t"
+            "beqz %[t], 3b\n\t"
+            "lbu %[t], 0(%[d])\n\t"
+            "sb %[t], 0(%[p])\n\t"
+            "addi %[p], %[p], 1\n\t"
+            "4:\n\t"
+            "lbu %[t], 0(%[c])\n\t"
+            "andi %[t], %[t], 1\n\t"
+            "beqz %[t], 4b\n\t"
+            "lbu %[t], 0(%[d])\n\t"
+            "sb %[t], 0(%[p])\n\t"
+            : [t] "=&r"(tmp), [p] "+r"(p)
+            : [c] "r"(ctrl), [d] "r"(data)
+            : "memory");
+    }
+}
+
+void dump(uint32_t start_address, uint32_t length) {
+    uwrite_int8s("\r\n");
+    uwrite_int8s("Dumping memory...\r\n");
+    uwrite_int8s("Memory dump:\r\n");
+    for (uint32_t addr = start_address; addr < start_address + length; addr += 4) {
+        volatile uint32_t* p = (volatile uint32_t*)(addr);
+        int8_t buffer[9];
+        uint32_to_ascii_hex(addr, buffer, 9);
+        uwrite_int8s(buffer);
+        uwrite_int8s(":");
+        uint32_to_ascii_hex(*p, buffer, 9);
+        uwrite_int8s(buffer);
+        uwrite_int8s("\r\n");
+    }
+}
+
 
 #define BUFFER_LEN 128
 
@@ -55,7 +111,7 @@ typedef void (*entry_t)(void);
 int main(void) {
     uwrite_int8s("\r\n");
 
-    for ( ; ; ) {
+    while (1) {
         uwrite_int8s("151> ");
 
         int8_t buffer[BUFFER_LEN];
@@ -65,6 +121,14 @@ int main(void) {
             uint32_t address = ascii_hex_to_uint32(read_token(buffer, BUFFER_LEN, " \x0d"));
             uint32_t file_length = ascii_dec_to_uint32(read_token(buffer, BUFFER_LEN, " \x0d"));
             store(address, file_length);
+        } else if (strcmp(input, "opt_file") == 0) {
+            uint32_t address = ascii_hex_to_uint32(read_token(buffer, BUFFER_LEN, " \x0d"));
+            uint32_t file_length = ascii_dec_to_uint32(read_token(buffer, BUFFER_LEN, " \x0d"));
+            store_opt(address, file_length);
+        } else if (strcmp(input, "dump") == 0) {
+            uint32_t address = ascii_hex_to_uint32(read_token(buffer, BUFFER_LEN, " \x0d"));
+            uint32_t length = ascii_dec_to_uint32(read_token(buffer, BUFFER_LEN, " \x0d"));
+            dump(address, length);
         } else if (strcmp(input, "jal") == 0) {
             uint32_t address = ascii_hex_to_uint32(read_token(buffer, BUFFER_LEN, " \x0d"));
 

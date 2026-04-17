@@ -144,8 +144,11 @@ build/target.tcl: $(RTL) $(CONSTRAINTS)
 
 setup: build/target.tcl
 
+../software/bios/bios.hex: ../software/bios/bios.c
+	cd ../software/bios && $(MAKE)
+
 # Actual Synthesis Recipe
-build/synth/$(TOP).dcp: build/target.tcl $(SCRIPTS)/synth.tcl
+build/synth/$(TOP).dcp: build/target.tcl $(SCRIPTS)/synth.tcl ../software/bios/bios.hex
 	mkdir -p ./build/synth/
 	cd ./build/synth/ && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/synth.tcl |& tee synth.log
 
