@@ -37,7 +37,8 @@ elements = {'LUT6': 1713,
             'PLLE2_ADV': 0,
             'OBUF': 0,
             'DSP48E2': 453_659,
-            'BSCANE2': 0
+            'BSCANE2': 0,
+            'RAMB18E2': 0
             }
 
 def get_cost(f):
