@@ -80,7 +80,7 @@ module ecall_tb;
     `IMEM_PATH.mem[INST_ADDR + 6] = {12'h011, 5'd0, 3'b000, 5'd1, `OPC_ARI_ITYPE};   // addi x1, x0, 0x11
     `IMEM_PATH.mem[INST_ADDR + 7] = {12'h099, 5'd0, 3'b000, 5'd2, `OPC_ARI_ITYPE};   // addi x2, x0, 0x99
     `IMEM_PATH.mem[INST_ADDR + 8] = 32'h30200073;      // mret
-    `IMEM_PATH.mem[INST_ADDR + 9] = 32'h0BF7EFF06F;     // jal x0, 0x10000000  (from 0x10000024, offset -36; timeout if mret didn't work)
+    `IMEM_PATH.mem[INST_ADDR + 9] = 32'hFDDFF06;     // jal x0, 0x10000000  (from 0x10000024, offset -36; timeout if mret didn't work)
 
     // Main program starts at 64 (RESET_PC = 0x1000_0100)
     `IMEM_PATH.mem[INST_ADDR + 64]  = {20'h10000, 5'd5, `OPC_LUI};                       // lui x5, 0x10000
