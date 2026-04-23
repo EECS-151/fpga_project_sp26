@@ -78,4 +78,17 @@
 
 `define FNC7_0  7'b0000000 // ADD, SRL
 `define FNC7_1  7'b0100000 // SUB, SRA
+
+// M-extension (multiply): opcode 0110011, funct7 = 0000001
+`define FNC7_MUL        7'b0000001
+`define FNC_MUL         3'b000   // lower 32 bits, signed * signed
+`define FNC_MULH        3'b001  // upper 32 bits, signed * signed
+`define FNC_MULHSU      3'b010  // upper 32 bits, signed * unsigned
+`define FNC_MULHU       3'b011  // upper 32 bits, unsigned * unsigned
+// DIV/REM same funct7 as MUL; funct3 distinguishes
+`define FNC_DIV         3'b100  // signed quotient
+`define FNC_DIVU        3'b101  // unsigned quotient
+`define FNC_REM         3'b110  // signed remainder
+`define FNC_REMU        3'b111  // unsigned remainder
+
 `endif //OPCODE
