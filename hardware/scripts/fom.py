@@ -64,6 +64,12 @@ parser.add_argument(
     type=float,
     help='override CoreMark score (skip FPGA run)',
 )
+parser.add_argument(
+    '--output',
+    action='store',
+    default='fom.txt',
+    help='output text file for results (default: %(default)s)',
+)
 
 args = parser.parse_args()
 
@@ -122,10 +128,18 @@ else:
 coremarks_per_mhz = coremarks / fmax
 fom = coremarks / math.sqrt(cost) * 100.0
 
-print('')
-print('Fmax: ' + str(fmax))
-print('Coremarks: {:.4f}'.format(coremarks))
-print('Coremarks/MHz: {:.4f}'.format(coremarks_per_mhz))
-print('Cost: ' + str(cost))
-print('')
-print('FOM: {:.2f}'.format(fom))
+output = f"""
+Fmax: {fmax}
+Coremarks: {coremarks:.4f}
+Coremarks/MHz: {coremarks_per_mhz:.4f}
+Cost: {cost}
+
+FOM: {fom:.2f}
+"""
+
+print(output)
+
+if args.output:
+    with open(args.output, 'w') as f:
+        f.write(output)
+    print(f'Results written to {args.output}')
