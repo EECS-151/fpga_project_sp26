@@ -6,10 +6,10 @@ import time
 import argparse
 
 DEFAULT_BAUD = 115200
-# Many USB–UART / PMOD paths only tolerate small bursts before drops; 8 B/chunk has
+# Many USB–UART / PMOD paths only tolerate small bursts before drops; 4 B/chunk has
 # been reliable here. Try larger N (16, 32, …) on your setup if stable; raise baud for speed.
-DEFAULT_CHUNK_SIZE = 8
-# Sleep multiplier on ideal 8N1 wire time per chunk (see _pace_sleep). >1 gives headroom
+DEFAULT_CHUNK_SIZE = 4
+# Sleep multiplier on ideal 8N1 wire time per chunk (see _pace_sleep). Bigger values give headroom
 # for bridges that lag behind the kernel tty queue.
 DEFAULT_PACE_MARGIN = 1.04
 
@@ -58,18 +58,18 @@ def hex_to_serial(
     time.sleep(0.01)
 
     # So that we don't overwhelm PC's UART, split into chunks and pace
-    if chunk_size and chunk_size < len(data):
+    if chunk_size and chunk_size < len(payload):
         sent = 0
-        while sent < len(data):
-            n = min(chunk_size, len(data) - sent)
-            ser.write(data[sent : sent + n])
+        while sent < len(payload):
+            n = min(chunk_size, len(payload) - sent)
+            ser.write(payload[sent : sent + n])
             sent += n
             time.sleep(_pace_sleep_seconds(n, baud, pace_margin))
             print("Sent {:d}/{:d} bytes".format(sent, size), end="\r")
         print()
         ser.flush()
     else:
-        ser.write(data)
+        ser.write(payload)
         time.sleep(_pace_sleep_seconds(size, baud, pace_margin))
         ser.flush()
         print("Sent {:d}/{:d} bytes".format(size, size))
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         description="Load hex file to FPGA via serial UART (line-rate pacing, bounded chunks)"
     )
     parser.add_argument("hex_file", action="store", type=str)
-    parser.add_argument("--port_name", action="store", type=str, default="/dev/ttyU-PMOD0")
+    parser.add_argument("--port_name", action="store", type=str, default="/dev/ttyU-PMOD2")
     parser.add_argument("--com_name", action="store", type=str, default="COM11")
     parser.add_argument("--baud", type=int, default=DEFAULT_BAUD, help="UART baud (default 115200)")
     parser.add_argument(
