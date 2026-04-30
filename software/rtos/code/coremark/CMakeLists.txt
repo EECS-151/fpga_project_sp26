@@ -22,6 +22,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(hello_world)
 
 set(COREMARK_DIR ${ZEPHYR_BASE}/../modules/benchmark/coremark)
+zephyr_include_directories(${COREMARK_DIR})
+zephyr_include_directories(${ZEPHYR_BASE}/../code/coremark/src/coremark)
 
 target_sources(app PRIVATE 
     ${COREMARK_DIR}/core_main.c 
