@@ -18,7 +18,7 @@ strpt = "build/synth/post_synth_timing_summary.rpt"
 iurpt = "build/impl/post_place_utilization.rpt"
 itrpt = "build/impl/post_route_timing_summary.rpt"
 
-DEFAULT_HEX = Path(__file__).resolve().parent.parent.parent / "zephyr/zephyr/build/zephyr/zephyr.hex"
+DEFAULT_HEX = Path(__file__).resolve().parent.parent.parent / "software/rtos/build/zephyr/zephyr.hex"
 
 
 def open_file(fname):
